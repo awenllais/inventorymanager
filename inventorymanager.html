@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>ur friendly neighbourhood inventory manager</title>
+
+    <style>
+
+        body {
+            font-family: comic sans ms;
+        }
+
+        /*  grid */
+        #grid {
+            display: grid;
+
+            /* 5 columns */
+            grid-template-columns: repeat(5, 60px);
+
+            /* Space between squares */
+            gap: 2px;
+        }
+
+        /* inventory square */
+        .cell {
+            width: 60px;
+            height: 60px;
+
+            border: 1px solid black;
+
+            background-color: gray;
+        }
+
+        /* The coloured part of an item */
+        .item-block {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Space between sections */
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .delbutton {
+            font-family: comic sans ms;
+            background-color: red;
+            color: white;
+            padding: 5px 10px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .addbutton {
+            font-family: comic sans ms;
+            background-color: rgb(30, 182, 30);
+            color: white;
+            padding: 5px 10px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+    <h1>here's ur inventory !!</h1>
+
+    <h2>hopefully this saves in your browser if u use the same one each time</h2>
+
+    <h3>but you should probably screenshot it or something</h3>
+
+    <!-- INVENTORY -->
+
+    <div class="section">
+
+        <p id="slotCounter">
+            0 / 20 slots taken !!!1
+        </p>
+
+        <!-- put the 20 squares here -->
+        <div id="grid"></div>
+
+    </div>
+
+    <!-- ADD ITEM -->
+
+    <div class="section">
+
+        <h2>add items here</h2>
+
+        <p>
+            what is it??
+            <input id="itemName" type="text">
+        </p>
+
+        <p>
+            how wide:
+            <input id="itemWidth" type="number" min="1" max="5" value="1">
+        </p>
+
+        <p>
+            how tall:
+            <input id="itemHeight" type="number" min="1" max="4" value="1">
+        </p>
+
+        <p>
+            pick colour (click button)
+            <input id="itemColour" type="color" value="red">
+        </p>
+
+        <button id="addButton" class="addbutton">
+            add it!!!
+        </button>
+
+    </div>
+
+
+    <!-- ITEM LIST -->
+
+    <div class="section">
+
+        <h2>heres what you got:</h2>
+
+        <div id="itemList"></div>
+
+    </div>
+
+
+
+    <script>
+        // 1. INVENTORY SETTINGS
+
+
+        // inventory is 5 squares wide
+        const GRID_WIDTH = 5;
+
+
+        // inventory is 4 squares tall
+        const GRID_HEIGHT = 4;
+
+
+        const TOTAL_SLOTS = GRID_WIDTH * GRID_HEIGHT;
+
+
+        // 2. ITEMS
+
+
+        let items = [];
+
+
+        /*
+            every item is stored as an object
+
+            ie:
+
+            {
+                name: "pee",
+                width: 3,
+                height: 1,
+                colour: "yellow",
+                x: 0,
+                y: 0
+            }
+
+            x and y tell where the item is
+        */
+
+
+        // 3. GET THE HTML ELEMENTS
+
+        const grid = document.getElementById("grid");
+
+        const slotCounter =
+            document.getElementById("slotCounter");
+
+        const itemName =
+            document.getElementById("itemName");
+
+        const itemWidth =
+            document.getElementById("itemWidth");
+
+        const itemHeight =
+            document.getElementById("itemHeight");
+
+        const itemColour =
+            document.getElementById("itemColour");
+
+        const addButton =
+            document.getElementById("addButton");
+
+        const itemList =
+            document.getElementById("itemList");
+
+        // 4. WHICH ITEM ARE WE DRAGGING?
+        // nothing for now... (it's null) but set later
+
+        let draggedItem = null;
+
+        // 5. DRAW THE INVENTORY
+
+
+        function drawInventory() {
+
+
+            grid.innerHTML = "";
+
+
+
+            // create the inventory grid
+
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+
+                for (let x = 0; x < GRID_WIDTH; x++) {
+
+
+                    // create a new HTML <div>
+                    const cell = document.createElement("div");
+
+
+                    // give it the "cell" CSS class
+                    cell.className = "cell";
+
+
+                    // remember which sqaure
+
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+
+
+
+                    // find the item that is in this square
+                    const item = findItemAt(x, y);
+
+
+
+                    // if there is
+                    if (item !== null) {
+
+
+                        // change bg of item sqaures to the item colour
+
+                        cell.style.backgroundColor =
+                            item.colour;
+
+
+
+                        // make item draggable
+
+                        cell.draggable = true;
+
+
+
+                        // start dragging
+
+                        cell.addEventListener("dragstart", function() {
+
+                            draggedItem = item;
+
+                        });
+
+
+
+                        // when we're over square
+
+                        cell.addEventListener("dragover", function(event) {
+
+                            // allow dropping
+                            event.preventDefault();
+
+                        });
+
+
+
+                        // when we drop the item, set the dragged item to null
+
+                        cell.addEventListener("drop", function(event) {
+
+                            event.preventDefault();
+
+                            moveItem(
+                                draggedItem,
+                                x,
+                                y
+                            );
+
+                            draggedItem = null;
+
+                        });
+
+
+                    } else {
+
+
+                        // empty square !! put the dragged item in
+
+                        cell.addEventListener("dragover", function(event) {
+
+                            event.preventDefault();
+
+                        });
+
+
+
+                        cell.addEventListener("drop", function(event) {
+
+                            event.preventDefault();
+
+                            moveItem(
+                                draggedItem,
+                                x,
+                                y
+                            );
+
+                            draggedItem = null;
+
+                        });
+
+                    }
+
+
+
+                    // put the square into the grid.
+                    grid.appendChild(cell);
+
+                }
+
+            }
+
+
+
+            
+            updateSlotCounter();
+
+
+            // update the list of items.
+            drawItemList();
+
+        }
+
+
+        // 6. FIND THE ITEM AT A PARTICULAR SQUARe
+
+
+        function findItemAt(x, y) {
+
+
+            // look through all items
+
+            for (let item of items) {
+
+
+                const insideX =
+                    x >= item.x &&
+                    x < item.x + item.width;
+
+
+                const insideY =
+                    y >= item.y &&
+                    y < item.y + item.height;
+
+
+                // if both true, item in square
+
+                if (insideX && insideY) {
+
+                    return item;
+
+                }
+
+            }
+
+            return null;
+
+        }
+
+
+        // 7. CHECK WHETHER AN ITEM FITS
+
+
+        function canPlaceItem(item, x, y) {
+
+
+            // checking left right top bottom
+
+            if (x < 0) {
+
+                return false;
+
+            }
+
+            if (y < 0) {
+
+                return false;
+
+            }
+
+
+            if (x + item.width > GRID_WIDTH) {
+
+                return false;
+
+            }
+
+            if (y + item.height > GRID_HEIGHT) {
+
+                return false;
+
+            }
+
+            //check ffoor others
+
+            for (
+                let checkY = y;
+                checkY < y + item.height;
+                checkY++
+            ) {
+
+
+                for (
+                    let checkX = x;
+                    checkX < x + item.width;
+                    checkX++
+                ) {
+
+
+                    const otherItem =
+                        findItemAt(checkX, checkY);
+
+
+
+                    if (
+                        otherItem !== null &&
+                        otherItem !== item
+                    ) {
+
+                        return false;
+
+                    }
+
+                }
+
+            }
+
+            return true;
+
+        }
+
+
+        // 8. MOVE AN ITEM
+
+
+        function moveItem(item, x, y) {
+
+            // no item to move
+
+            if (item === null) {
+
+                return;
+
+            }
+
+            // if it can fit
+
+
+            if (canPlaceItem(item, x, y)) {
+
+                item.x = x;
+                item.y = y;
+
+                saveInventory();
+
+                drawInventory();
+
+
+            } else {
+
+
+
+                alert(
+                    "you can't put that thereeee"
+                );
+
+            }
+
+        }
+
+
+        // 9. COUNT USED SLOTS
+
+        function updateSlotCounter() {
+
+
+            let usedSlots = 0;
+
+
+            for (let item of items) {
+
+
+                usedSlots +=
+                    item.width * item.height;
+
+            }
+
+
+            slotCounter.textContent =
+                usedSlots + " / " +
+                TOTAL_SLOTS +
+                " slots taken !!!";
+
+        }
+
+        // 10. DRAW THE ITEM LIST
+
+
+        function drawItemList() {
+
+
+            itemList.innerHTML = "";
+
+            for (
+                let i = 0;
+                i < items.length;
+                i++
+            ) {
+
+
+                const item = items[i];
+
+
+                const itemText =
+                    document.createElement("p");
+
+                itemText.textContent =
+                    item.name +
+                    " - " +
+                    item.width +
+                    " × " +
+                    item.height +
+                    "  ";
+
+                itemText.style.color =
+                    item.colour;
+
+                const deleteButton =
+                    document.createElement("button");
+                    deleteButton.setAttribute("class", "delbutton")
+
+                deleteButton.textContent =
+                    "get rid!";
+
+                deleteButton.addEventListener(
+                    "click",
+                    function() {
+
+
+                        items.splice(i, 1);
+
+                        saveInventory();
+
+                        drawInventory();
+
+                    }
+                );
+
+
+                itemText.appendChild(deleteButton);
+
+                itemList.appendChild(itemText);
+
+            }
+
+        }
+
+
+        // 11. ADD A NEW ITEM
+
+
+        addButton.addEventListener(
+            "click",
+            function() {
+
+
+                const name =
+                    itemName.value;
+
+
+                const width =
+                    Number(itemWidth.value);
+
+
+                const height =
+                    Number(itemHeight.value);
+
+
+                const colour =
+                    itemColour.value;
+
+
+                if (name === "") {
+
+                    alert(
+                        "what is it??"
+                    );
+
+                    return;
+
+                }
+
+                // create the item with selected values
+
+                const newItem = {
+
+                    name: name,
+
+                    width: width,
+
+                    height: height,
+
+                    colour: colour,
+
+                    x: 0,
+
+                    y: 0
+
+                };
+
+
+
+                let foundSpace = false;
+
+
+
+                for (
+                    let y = 0;
+                    y < GRID_HEIGHT;
+                    y++
+                ) {
+
+
+                    for (
+                        let x = 0;
+                        x < GRID_WIDTH;
+                        x++
+                    ) {
+
+
+                        if (
+                            canPlaceItem(
+                                newItem,
+                                x,
+                                y
+                            )
+                        ) {
+
+
+                            newItem.x = x;
+
+                            newItem.y = y;
+
+                            foundSpace = true;
+
+
+                            break;
+
+                        }
+
+                    }
+
+
+                    // if you find a space, stop
+
+                    if (foundSpace) {
+
+                        break;
+
+                    }
+
+                }
+
+
+                // no found space
+
+                if (!foundSpace) {
+
+                    alert(
+                        "no room :("
+                    );
+
+                    return;
+
+                }
+
+                // add the item
+
+                items.push(newItem);
+
+
+                // clean the form
+
+                itemName.value = "";
+
+                itemWidth.value = 1;
+
+                itemHeight.value = 1;
+
+                saveInventory();
+
+                drawInventory();
+
+            }
+        );
+
+
+        // 12. SAVE THE INVENTORY
+     
+
+
+        function saveInventory() {
+
+
+            /*
+                localStorage is the browser's
+                built-in little storage system.
+
+                JSON.stringify converts our
+                JavaScript array into text.
+            */
+
+            localStorage.setItem(
+                "awenInventory",
+                JSON.stringify(items)
+            );
+
+        }
+
+        // 13. LOAD THE INVENTORY
+
+
+        function loadInventory() {
+
+            // ask browser if inventory 
+
+            const savedInventory =
+                localStorage.getItem(
+                    "awenInventory"
+                );
+
+
+            if (savedInventory !== null) {
+
+
+                // convert back
+
+                items =
+                    JSON.parse(savedInventory);
+
+            }
+
+        }
+
+        // 14. START THE PROGRAM
+
+        // load anything prev saved
+
+        loadInventory();
+
+        // make the inventory
+
+        drawInventory();
+
+
+    </script>
+
+</body>
+
+</html>
